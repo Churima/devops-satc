@@ -21,10 +21,10 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build Docker Image
-        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-satc:0.0.1 .
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-satc:${{ github.sha }} .
         
       - name: Push Docker Image
-        run: docker push docker.io/${{ secrets.DOCKER_USERNAME }}/devops-satc:0.0.1 
+        run: docker push docker.io/${{ secrets.DOCKER_USERNAME }}/devops-satc:${{ github.sha }}
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
@@ -42,7 +42,8 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'image'
-          image-ref: 'docker.io/${{ secrets.DOCKER_USERNAME }}/devops-satc:0.0.1'
+          # Aqui estava 0.0.1, mudei para ${{ github.sha }} para acompanhar o build
+          image-ref: 'docker.io/${{ secrets.DOCKER_USERNAME }}/devops-satc:${{ github.sha }}'
           format: json
           output: trivy-results.json
           severity: MEDIUM,HIGH,CRITICAL
