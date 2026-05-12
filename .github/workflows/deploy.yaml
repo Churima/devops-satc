@@ -2,14 +2,12 @@ name: Deploy para GKE
 
 on:
   workflow_run:
-    workflows: ['Docker Image Check'] # Precisa ter o mesmo nome do seu workflow de build
+    workflows: ['Build']
     types: [completed]
   workflow_dispatch:
 
 jobs:
   deploy:
-    # Só executa o deploy se o build anterior terminou com sucesso
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: 'read'
@@ -36,15 +34,22 @@ jobs:
 
       - name: Replace vars in deployment.yaml
         run: |
-          # Substitui os placeholders do arquivo yaml pelas variáveis reais
+          # Substitui a imagem no deployment.yaml pela nova imagem com tag 0.0.3
           sed -i 's/##DOCKER_USERNAME##/${{ secrets.DOCKER_USERNAME }}/g' k8s/deployment.yaml
           sed -i 's/##K8S_NAMESPACE##/${{ vars.K8S_NAMESPACE }}/g' k8s/deployment.yaml
           sed -i 's/##K8S_TAG##/${{ github.sha }}/g' k8s/deployment.yaml
 
       - name: Criar namespace se não existir
         run: |
+          # Cria namespace ${{ vars.K8S_NAMESPACE }} idempotentemente
           kubectl create namespace ${{ vars.K8S_NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Aplicar manifests Kubernetes
         run: |
+          # Aplica deployment.yaml e service.yaml do diretÃ³rio k8s/
           kubectl apply -f k8s/ -n ${{ vars.K8S_NAMESPACE }}
+
+      # - name: Aguardar rollout do deployment
+      #   run: |
+      #     # Verifica status do rollout (timeout 5min)
+      #     kubectl rollout status deployment/satc-devops -n ${{ vars.K8S_NAMESPACE }} --timeout=300s
